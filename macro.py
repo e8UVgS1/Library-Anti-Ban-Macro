@@ -6,6 +6,29 @@ import time
 import datetime
 import os
 
+def click_page(page_num):
+    global driver
+    page_num = int(page_num)
+    req_ = driver.page_source
+    soup_ = BeautifulSoup(req_, 'html.parser')
+    soup_ = soup_.find(class_='pageNav')
+    active_buttons = soup_.find_all(style='display: list-item;')
+    page_string = 'pageNav' + str(page_num)
+    for button in active_buttons:
+        if page_string in str(button):
+            click_button = button
+            break
+        elif 'next' in str(button):
+            click_class = button['class'][0]
+            driver.find_element(By.CLASS_NAME, click_class).click()
+            click_page(page_num)
+            return
+    if 'currentPage' in str(click_button):
+        return
+    click_class = click_button['class'][0]
+    driver.find_element(By.CLASS_NAME, click_class).click()
+
+
 chrome_option = webdriver.ChromeOptions()
 chrome_option.add_argument('--headless')
 chrome_option.add_argument('--no-sandbox')
@@ -48,6 +71,9 @@ for book in book_list:
         remaining_time = penalty_time - datetime.datetime.now()
         remaining_time = remaining_time.total_seconds()
         if remaining_time < 600:  # 예약 부도까지 남은 시간이 10분 미만일 때
+            page_num = book['class'][0]
+            page_num = page_num.strip('page')
+            click_page(page_num)
             cancel_button = book.find(class_='btn_studyroom_reservation')
             cancel_button = cancel_button.a.attrs['href']
             xpath = '//a[@href="' + cancel_button + '"]'
@@ -67,6 +93,9 @@ for book in book_list:
         remaining_time = end_datetime - datetime.datetime.now()
         remaining_time = remaining_time.total_seconds()
         if remaining_time < 600:  # 좌석 자동 반납까지 남은 시간이 10분 미만일 때
+            page_num = book['class'][0]
+            page_num = page_num.strip('page')
+            click_page(page_num)
             cancel_button = book.find(class_='btn_studyroom_reservation')
             cancel_button = cancel_button.a.attrs['href']
             xpath = '//a[@href="' + cancel_button + '"]'
