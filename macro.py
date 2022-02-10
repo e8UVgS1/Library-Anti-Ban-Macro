@@ -12,7 +12,10 @@ def click_page(page_num):
     req_ = driver.page_source
     soup_ = BeautifulSoup(req_, 'html.parser')
     soup_ = soup_.find(class_='pageNav')
-    active_buttons = soup_.find_all(style='display: list-item;')
+    try:
+        active_buttons = soup_.find_all(style='display: list-item;')
+    except AttributeError:
+        return
     page_string = 'pageNav' + str(page_num)
     for button in active_buttons:
         if page_string in str(button):
