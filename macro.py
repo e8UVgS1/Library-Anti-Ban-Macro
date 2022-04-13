@@ -1,10 +1,15 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
+import selenium.common.exceptions
+import chromedriver_autoinstaller
 from bs4 import BeautifulSoup
 import time
 import datetime
 import os
+import pgp
+import true_email
+
 
 def click_page(page_num):
     global driver
@@ -32,14 +37,26 @@ def click_page(page_num):
     driver.find_element(By.CLASS_NAME, click_class).click()
 
 
-chrome_option = webdriver.ChromeOptions()
-chrome_option.add_argument('--headless')
-chrome_option.add_argument('--no-sandbox')
-chrome_option.add_argument('--disable-dev-shm-usage')
+def get_driver():
+    # 크롬 드라이버
+    chrome_ver = chromedriver_autoinstaller.get_chrome_version().split('.')[0]  # 크롬 버전 확인
+    chrome_option = webdriver.ChromeOptions()
+    chrome_option.add_argument('--headless')
+    chrome_option.add_argument('--no-sandbox')
+    chrome_option.add_argument('--disable-dev-shm-usage')
+    try:
+        s = Service(f'/{chrome_ver}/chromedriver')
+        driver_ = webdriver.Chrome(service=s, options=chrome_option)
+    except selenium.common.exceptions.WebDriverException:
+        chromedriver_autoinstaller.install(True)
+        s = Service(f'/{chrome_ver}/chromedriver')
+        driver_ = webdriver.Chrome(service=s, options=chrome_option)
+    driver_.implicitly_wait(20)
+    return driver_
+
 
 # 크롬 드라이버
-s = Service('chromedriver')
-driver = webdriver.Chrome(service=s, options=chrome_option)
+driver = get_driver()
 
 snu_id = os.environ.get('SNU_ID')
 snu_password = os.environ.get('SNU_PW')
@@ -87,6 +104,8 @@ for book in book_list:
             time.sleep(1)
             driver.switch_to.alert.accept()  # 예약 취소되었습니다.
             print('예약 취소함')
+            body = f'예약 취소함\n좌석 번호 : {book.contents[2].div.string}\n예약 시간 : {start_time}'
+            true_email.self_email('도서관', pgp.encrypt(body))
     if '사용중' in str(book):  # 좌석 미반납
         end_time = book.contents[4].div.string
         end_date = book.contents[1].div.string
@@ -109,5 +128,7 @@ for book in book_list:
             time.sleep(1)
             driver.switch_to.alert.accept()  # 좌석 반납
             print('좌석 반납함')
+            body = f'좌석 반납함\n좌석 번호 : {book.contents[2].div.string}\n반납 시간 : {end_time}'
+            true_email.self_email('도서관', pgp.encrypt(body))
 
 driver.quit()
